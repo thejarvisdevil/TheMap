@@ -1,0 +1,44 @@
+{
+	"geode": "4.6.2",
+	"gd": {
+		"win": "2.2074",
+		"android": "2.2074",
+		"mac": "2.2074",
+		"ios": "2.2074"
+	},
+	"id": "jarvisdevil.the_map",
+	"name": "The Map",
+	"version": "v1.0.0",
+	"developer": "jarvisdevil",
+	"description": "Adds my version of The Map in Geometry Dash.",
+	"dependencies": {
+		"geode.node-ids": {
+			"version": ">=1.21.1",
+			"importance": "required"
+		}
+	},
+	"resources": {
+        "spritesheets": {
+            "WorldSheet": [
+                "resources/world/*.png"
+            ]
+        },
+		"sprites": [
+			"resources/backgrounds/*.png",
+			"resources/images/*.png"
+		],
+		"files": [
+            "resources/music/*.mp3"
+        ]
+    },
+	"tags": [
+		"content",
+		"gameplay",
+		"online",
+		"universal"
+	],
+	"links": {
+		"community": "https://discord.gg/EygBPh6JwW",
+		"source": "https://github.com/thejarvisdevil/TheMap"
+	}
+}
