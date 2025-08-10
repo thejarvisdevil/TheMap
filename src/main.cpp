@@ -19,6 +19,7 @@ public:
         level->m_accountID = wlvl.accountID;
         level->m_userID = wlvl.userID;
         auto scene = LevelInfoLayer::scene(level, false);
+        scene->setUserObject("is-world-level"_spr, CCBool::create(true));
         CCDirector::get()->pushScene(CCTransitionFade::create(0.5f, scene));
     }
     void levelDownloadFailed(int id) override {
@@ -245,6 +246,8 @@ class $modify(TMCreatorLayer, CreatorLayer) {
 
 class $modify(TMLevelInfoLayer, LevelInfoLayer) {
     void onBack(CCObject* sender) {
-        CCDirector::get()->popSceneWithTransition(0.5f, PopTransition::kPopTransitionFade);
+        if (this->getUserObject("is-world-level"_spr)) CCDirector::get()->popSceneWithTransition(0.5f, PopTransition::kPopTransitionFade);
+        else LevelInfoLayer::onBack(sender);
     }
+
 };
