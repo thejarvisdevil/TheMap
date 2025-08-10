@@ -8,7 +8,7 @@
 	},
 	"id": "jarvisdevil.the_map",
 	"name": "The Map",
-	"version": "v1.0.0",
+	"version": "v1.0.1",
 	"developer": "jarvisdevil",
 	"description": "Adds my version of The Map in Geometry Dash.",
 	"dependencies": {
@@ -41,4 +41,5 @@
 		"community": "https://discord.gg/EygBPh6JwW",
 		"source": "https://github.com/thejarvisdevil/TheMap"
 	}
+
 }
