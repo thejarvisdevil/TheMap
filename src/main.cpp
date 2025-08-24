@@ -81,9 +81,15 @@ public:
 
         auto funnytext = CCLabelBMFont::create("This is where your adventure starts...", "bigFont.fnt");
         funnytext->setID("funny-text");
-        funnytext->setPosition(win.width / 2, win.height / 10);
+        funnytext->setPosition(win.width / 2, win.height / 1.15f);
         funnytext->setScale(0.4f);
         this->addChild(funnytext);
+
+        auto hellnaw = CCLabelBMFont::create("(removed levels)", "bigFont.fnt");
+        hellnaw->setID("hellnaw-text");
+        hellnaw->setPosition(90.f, win.height / 12);
+        hellnaw->setScale(0.25f);
+        this->addChild(hellnaw);
 
         auto backSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
         auto backBtn = CCMenuItemSpriteExtra::create(backSpr, nullptr, this, menu_selector(WorldsLayer::onBack));
@@ -130,9 +136,7 @@ public:
                 ? "worldLevelBtn_001.png"_spr
                 : "worldLevelBtn_locked_001.png"_spr;
             auto spr = CCSprite::createWithSpriteFrameName((std::string(frame)).c_str());
-            if (i == lvls.size() - 1) {
-                spr->setScale(1.5f);
-            }
+            spr->setScale(i == 9 ? 1.5f : (i < 10 ? 1.0f : 0.5f));
             auto btn = CCMenuItemSpriteExtra::create(spr, nullptr, this, menu_selector(WorldsLayer::onWorld));
             btn->setID("lvl-" + std::to_string(e.levelID));
             btn->setTag(e.levelID);
