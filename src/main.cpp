@@ -31,38 +31,26 @@ public:
         GameLevelManager::get()->m_levelDownloadDelegate = nullptr;
     }
 };
+
 static inline WorldLvl s_delegate;
 
 class WorldsLayer : public cocos2d::CCLayer {
 public:
     CREATE_FUNC(WorldsLayer);
 
+    size_t theWorldWeAreIn = 0;
+    CCMenuItemSpriteExtra* prevBtn = nullptr;
+    CCMenuItemSpriteExtra* nextBtn = nullptr;
+    std::string bgmAudio;
+
     bool init() override {
         if (!CCLayer::init()) return false;
         auto win = CCDirector::get()->getWinSize();
-
-        auto bg = CCSprite::create("World1.png"_spr);
-        bg->setID("world-bg");
-        bg->setAnchorPoint({0.5f, 0.5f});
-        bg->setPosition({ win.width / 2, win.height / 2 });
-        float scaleX = win.width / bg->getContentSize().width;
-        float scaleY = win.height / bg->getContentSize().height;
-        bg->setScaleX(scaleX);
-        bg->setScaleY(scaleY);
-        this->addChild(bg, -1);
 
         auto menu = CCMenu::create();
         menu->setID("world-menu");
         menu->setPosition({0,0});
         addChild(menu);
-
-        auto infoSpr = CCSprite::createWithSpriteFrameName("GJ_infoBtn_001.png");
-        infoSpr->setScale(0.8f);
-        auto infoBtn = CCMenuItemSpriteExtra::create(infoSpr, nullptr, this, menu_selector(WorldsLayer::onInfo));
-        infoBtn->setID("info-btn");
-        infoBtn->setPosition({ win.width - infoSpr->getContentSize().width/2 - 10.f,
-                               win.height - infoSpr->getContentSize().height/2 - 10.f });
-        menu->addChild(infoBtn);
 
         auto discordSpr = CCSprite::createWithSpriteFrameName("gj_discordIcon_001.png");
         auto discordBtn = CCMenuItemSpriteExtra::create(discordSpr, nullptr, this, menu_selector(WorldsLayer::onDiscord));
@@ -73,23 +61,17 @@ public:
         });
         menu->addChild(discordBtn);
 
-        auto title = CCLabelBMFont::create("W1 - Hello, World!", "bigFont.fnt");
+        auto title = CCLabelBMFont::create("", "bigFont.fnt");
         title->setID("world-name");
         title->setPosition(win.width / 2, win.height - 25.f);
         title->setScale(0.6f);
         this->addChild(title);
 
-        auto funnytext = CCLabelBMFont::create("This is where your adventure starts...", "bigFont.fnt");
+        auto funnytext = CCLabelBMFont::create("", "bigFont.fnt");
         funnytext->setID("funny-text");
         funnytext->setPosition(win.width / 2, win.height / 1.15f);
         funnytext->setScale(0.4f);
         this->addChild(funnytext);
-
-        auto hellnaw = CCLabelBMFont::create("(removed levels)", "bigFont.fnt");
-        hellnaw->setID("hellnaw-text");
-        hellnaw->setPosition(90.f, win.height / 12);
-        hellnaw->setScale(0.25f);
-        this->addChild(hellnaw);
 
         auto backSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_01_001.png");
         auto backBtn = CCMenuItemSpriteExtra::create(backSpr, nullptr, this, menu_selector(WorldsLayer::onBack));
@@ -97,10 +79,21 @@ public:
         backBtn->setID("back-btn");
         menu->addChild(backBtn);
 
-        this->refreshLvls(0);
-        this->schedule(schedule_selector(WorldsLayer::refreshLvls), 1.0f);
+        auto prevSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+        prevBtn = CCMenuItemSpriteExtra::create(prevSpr, nullptr, this, menu_selector(WorldsLayer::onMINUSWORLD));
+        prevBtn->setPosition({50.f, win.height / 2});
+        prevBtn->setID("prev-btn");
+        menu->addChild(prevBtn);
 
-        FMODAudioEngine::sharedEngine()->playMusic("TinyGroove.mp3"_spr, true, 1.0f, 8932);
+        auto nextSpr = CCSprite::createWithSpriteFrameName("GJ_arrow_03_001.png");
+        nextSpr->setFlipX(true);
+        nextBtn = CCMenuItemSpriteExtra::create(nextSpr, nullptr, this, menu_selector(WorldsLayer::onPLUSWORLD));
+        nextBtn->setPosition({win.width - 50.f, win.height / 2});
+        nextBtn->setID("next-btn");
+        menu->addChild(nextBtn);
+
+        this->refreshLvls(0);
+        this->schedule(schedule_selector(WorldsLayer::refreshLvls), 2.5f);
 
         return true;
     }
@@ -120,7 +113,36 @@ public:
             }
         }
 
-        auto lvls = getWorldLevels(win.width, win.height);
+        auto worlds = getWorlds(win.width, win.height);
+        if (theWorldWeAreIn >= worlds.size()) theWorldWeAreIn = worlds.size() - 1;
+        const auto& world = worlds[theWorldWeAreIn];
+
+        std::string bgname = std::string("World"_spr) + std::to_string(theWorldWeAreIn + 1) + ".png";
+        // ^^^ this will crash the game once you reach secret world 80,000,000 :trollface: (/j)
+
+        auto newBg = CCSprite::create(bgname.c_str());
+        newBg->setID("world-bg");
+        newBg->setAnchorPoint({0.5f, 0.5f});
+        newBg->setPosition({ win.width / 2, win.height / 2 });
+        float scaleX = win.width / newBg->getContentSize().width;
+        float scaleY = win.height / newBg->getContentSize().height;
+        newBg->setScaleX(scaleX);
+        newBg->setScaleY(scaleY);
+        this->addChild(newBg, -1);
+
+        if (auto old = static_cast<CCSprite*>(this->getChildByID("world-bg"))) {
+            if (old != newBg) old->removeFromParentAndCleanup(true);
+        }
+
+        static_cast<CCLabelBMFont*>(this->getChildByID("world-name"))->setString(world.title.c_str());
+        static_cast<CCLabelBMFont*>(this->getChildByID("funny-text"))->setString(world.desc.c_str());
+
+        if (bgmAudio != world.audio) {
+            bgmAudio = world.audio;
+            FMODAudioEngine::sharedEngine()->playMusic(world.audio, true, 1.0f, 0);
+        }
+
+        auto lvls = getWorldLevels(win.width, win.height, theWorldWeAreIn + 1);
         cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
         std::set<int> completed;
         for (unsigned i = 0; i < arr->count(); ++i) {
@@ -128,15 +150,22 @@ public:
                 completed.insert(g->m_levelID);
             }
         }
+
+        bool uhh = false;
         for (size_t i = 0; i < lvls.size(); ++i) {
             const auto& e = lvls[i];
             bool unlocked = (e.order == 1) ||
                 (completed.count(lvls[e.order - 2].levelID) > 0);
+            if (!unlocked) { uhh = true; }
+            if (uhh) { continue; }
             const char* frame = unlocked
                 ? "worldLevelBtn_001.png"_spr
                 : "worldLevelBtn_locked_001.png"_spr;
             auto spr = CCSprite::createWithSpriteFrameName((std::string(frame)).c_str());
-            spr->setScale(i == 9 ? 1.5f : (i < 10 ? 1.0f : 0.5f));
+            if (i == lvls.size() - 1) { spr->setScale(2.0f); }
+            if (completed.count(e.levelID) > 0) {
+                spr->setColor(ccc3(0, 255, 0));
+            }
             auto btn = CCMenuItemSpriteExtra::create(spr, nullptr, this, menu_selector(WorldsLayer::onWorld));
             btn->setID("lvl-" + std::to_string(e.levelID));
             btn->setTag(e.levelID);
@@ -144,74 +173,64 @@ public:
             btn->setEnabled(unlocked);
             menu->addChild(btn);
         }
+
+        prevBtn->setVisible(theWorldWeAreIn > 0);
+        nextBtn->setVisible(theWorldWeAreIn + 1 < worlds.size());
+    }
+
+
+    void onMINUSWORLD(CCObject*) {
+        if (theWorldWeAreIn == 0) return;
+        theWorldWeAreIn--;
+        this->refreshLvls(0);
+    }
+
+    void onPLUSWORLD(CCObject*) {
+        auto win = CCDirector::get()->getWinSize();
+        auto worlds = getWorlds(win.width, win.height);
+        if (theWorldWeAreIn + 1 >= worlds.size()) return;
+        if (!ifSpaceUKd(worlds[theWorldWeAreIn].levels)) {
+            FLAlertLayer::create("Woah there!", "<cy>Please beat all the levels</c> <cj>before moving on to the next world!</c>", "OK")->show();
+            return;
+        }
+        theWorldWeAreIn++;
+        this->refreshLvls(0);
+    }
+
+    bool ifSpaceUKd(const std::vector<WorldLevel>& levels) {
+        cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
+        std::set<int> completed;
+        for (unsigned i = 0; i < arr->count(); ++i)
+            if (auto g = dynamic_cast<GJGameLevel*>(arr->objectAtIndex(i)))
+                completed.insert(g->m_levelID);
+        for (const auto& e : levels)
+            if (!completed.count(e.levelID)) return false;
+        return true;
     }
 
     void onDiscord(CCObject*) {
         web::openLinkInBrowser("https://dsc.gg/devlin");
     }
 
-    void onInfo(CCObject*) {
-        auto win = CCDirector::get()->getWinSize();
-
-        if (this->getChildByID("help-me")) {
-            this->onClosePromo(nullptr);
-            return;
-        }
-
-        auto promo = CCSprite::create("promo.png"_spr);
-        float scaleX = (win.width * 0.8f) / promo->getContentSize().width;
-        float scaleY = (win.height * 0.8f) / promo->getContentSize().height;
-        float scale = std::min(scaleX, scaleY);
-        promo->setID("help-me");
-        promo->setScale(scale);
-        promo->setPosition({ win.width / 2, win.height / 2 });
-        promo->setZOrder(1000);
-        this->addChild(promo, 1000);
-
-        float promoW = promo->getContentSize().width * scale;
-        float promoH = promo->getContentSize().height * scale;
-
-        auto xSpr = CCSprite::createWithSpriteFrameName("GJ_closeBtn_001.png");
-        auto closeBtn = CCMenuItemSpriteExtra::create(xSpr, nullptr, this, menu_selector(WorldsLayer::onClosePromo));
-        closeBtn->setPosition({
-            promo->getPositionX() - promoW / 2 + xSpr->getContentSize().width * 0.5f - 24.f,
-            promo->getPositionY() + promoH / 2 - xSpr->getContentSize().height * 0.5f + 24.f
-        });
-        closeBtn->setID("promo-close");
-        closeBtn->setZOrder(1001);
-
-        auto promoMenu = CCMenu::create();
-        promoMenu->setID("promo-menu");
-        promoMenu->setPosition({0,0});
-        promoMenu->addChild(closeBtn);
-        promoMenu->setZOrder(1001);
-        this->addChild(promoMenu, 1001);
-    }
-
-    void onClosePromo(CCObject*) {
-        if (auto promo = this->getChildByID("help-me"))
-            promo->removeFromParentAndCleanup(true);
-        if (auto promoMenu = this->getChildByID("promo-menu"))
-            promoMenu->removeFromParentAndCleanup(true);
-    }
-
     void onBack(CCObject*) {
         GameManager::get()->fadeInMenuMusic();
         CCDirector::get()->replaceScene(
             CCTransitionFade::create(0.5f, CreatorLayer::scene())
+            // boo hoo, i havent fixed it
         );
     }
 
     void onWorld(CCObject* sender) {
         int id = static_cast<CCMenuItemSpriteExtra*>(sender)->getTag();
         auto win = CCDirector::get()->getWinSize();
-        auto lvls = getWorldLevels(win.width, win.height);
-        for (const auto& e : lvls) {
-            if (e.levelID == id) {
-                s_delegate.wlvl = e;
-                break;
-            }
-        }
+        auto worlds = getWorlds(win.width, win.height);
+        for (const auto& w : worlds)
+            for (const auto& e : w.levels)
+                if (e.levelID == id) {
+                    s_delegate.wlvl = e;
+                    goto FOUND;
+                }
+    FOUND:
         GameLevelManager::get()->m_levelDownloadDelegate = &s_delegate;
         GameLevelManager::get()->downloadLevel(id, false);
     }
@@ -253,5 +272,4 @@ class $modify(TMLevelInfoLayer, LevelInfoLayer) {
         if (this->getUserObject("is-world-level"_spr)) CCDirector::get()->popSceneWithTransition(0.5f, PopTransition::kPopTransitionFade);
         else LevelInfoLayer::onBack(sender);
     }
-
 };
