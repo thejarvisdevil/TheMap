@@ -146,7 +146,7 @@ public:
         cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
         std::set<int> completed;
         for (unsigned i = 0; i < arr->count(); ++i) {
-            if (auto g = dynamic_cast<GJGameLevel*>(arr->objectAtIndex(i))) {
+            if (auto g = typeinfo_cast<GJGameLevel*>(arr->objectAtIndex(i))) {
                 completed.insert(g->m_levelID);
             }
         }
@@ -201,7 +201,7 @@ public:
         cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
         std::set<int> completed;
         for (unsigned i = 0; i < arr->count(); ++i)
-            if (auto g = dynamic_cast<GJGameLevel*>(arr->objectAtIndex(i)))
+            if (auto g = typeinfo_cast<GJGameLevel*>(arr->objectAtIndex(i)))
                 completed.insert(g->m_levelID);
         for (const auto& e : levels)
             if (!completed.count(e.levelID)) return false;
