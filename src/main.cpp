@@ -161,6 +161,12 @@ public:
         nextBtn->setID("next-btn");
         menu->addChild(nextBtn);
 
+        auto customMaps = CCSprite::createWithSpriteFrameName("GJ_chatBtn_01_001.png");
+        auto customMapBtn = CCMenuItemSpriteExtra::create(customMaps, nullptr, this, menu_selector(WorldsLayer::onCM));
+        customMapBtn->setPosition({20.f, win.height / 12});
+        customMapBtn->setID("custom-btn");
+        menu->addChild(customMapBtn);
+
         this->refreshLvls(0);
         this->schedule(schedule_selector(WorldsLayer::refreshLvls), 2.5f);
 
@@ -317,6 +323,20 @@ public:
         }
         theWorldWeAreIn++;
         this->refreshLvls(0);
+    }
+
+    void onCM(CCObject*) {
+        geode::createQuickPopup(
+            "Custom Maps",
+            "Would you like to open the Custom Maps page?",
+            "Sure!",
+            "Nah",
+            [](auto, bool btn1) {
+                if (!btn1) {
+                    web::openLinkInBrowser("https://id.jarvisdevil.com/maps/?hello=1");
+                }
+            }
+        );
     }
 
     bool ifSpaceUKd(const std::vector<WorldLevel>& levels) {

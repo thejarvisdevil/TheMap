@@ -1,3 +1,5 @@
+# 2.1.1
+- i forgot to add the custom maps button for people who are like "WHAT HOW BROOOO"
 # 2.1.0
 - custom maps support
 - added cheat related settings
