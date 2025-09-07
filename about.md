@@ -27,6 +27,6 @@ To play The Map, open the creator menu and select "Worlds".
 You now get to play a ton of levels from 8 different worlds! (and a very special one from me at the end...)
   
 ### (and finally)
-Thank you to the 12,800+ people who have played the demo of The Map (since it wasn't finished yet), you guys are :fire:  
+Thank you to the 19,000+ people who have played the demo of The Map (since it wasn't finished yet), you guys are :fire:  
   
 I hope you have fun with the full version of The Map! (custom worlds next? sure)

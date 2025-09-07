@@ -8,7 +8,7 @@
 	},
 	"id": "jarvisdevil.the_map",
 	"name": "The Map",
-	"version": "v2.0.1",
+	"version": "v2.1.0",
 	"developer": "jarvisdevil",
 	"description": "Adds my version of The Map in Geometry Dash.",
 	"dependencies": {
@@ -16,6 +16,19 @@
 			"version": ">=1.21.1",
 			"importance": "required"
 		}
+	},
+	"settings": {
+		"cheats": {
+			"type": "title",
+			"name": "Cheats",
+			"description": "Enable cheats."
+		},
+		"unlock-all": {
+            "type": "bool",
+            "name": "[Cheat] Unlock All",
+            "description": "Unlocks all levels in The Map.",
+            "default": false
+        }
 	},
 	"resources": {
         "spritesheets": {

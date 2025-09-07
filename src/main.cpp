@@ -10,6 +10,78 @@ using namespace geode::prelude;
 #include <Geode/utils/web.hpp>
 #include "levels.hpp"
 
+#include <filesystem>
+#include <string>
+
+// i should really implement the thing where the actual bgm plays when exiting a map level
+
+static bool c_custom = false;
+static std::vector<std::string> c_customBG;
+static std::vector<std::string> g_customBGM;
+
+static std::vector<World> customTM(float width, float height) {
+    auto configDir = Mod::get()->getConfigDir(true);
+    std::string customDir = (configDir / "custom").string();
+    geode::utils::file::createDirectory(customDir);
+
+    auto gg = geode::utils::file::readString(customDir + "/map.json");
+    if (!gg) {
+        c_custom = false;
+        c_customBG.clear();
+        g_customBGM.clear();
+        return getWorlds(width, height);
+    }
+
+    auto yayyyy = matjson::parse(*gg); // matpat parse
+    if (!yayyyy) {
+        c_custom = false;
+        c_customBG.clear();
+        g_customBGM.clear();
+        return getWorlds(width, height);
+    }
+
+    std::vector<World> worlds;
+    c_customBG.clear();
+    g_customBGM.clear();
+
+    for (auto& wv : *yayyyy) {
+        World w;
+        w.title = wv["title"].asString().unwrapOr("");
+        w.desc  = wv["shortText"].asString().unwrapOr("");
+        std::string bg = wv["background"].asString().unwrapOr("");
+        std::string music = wv["music"].asString().unwrapOr("");
+        w.audio = "";
+
+        if (wv["levels"].isArray()) {
+            for (auto& lv : wv["levels"]) {
+                WorldLevel l;
+                double rawx = lv["x"].asDouble().unwrapOr(0.0);
+                double rawy = lv["y"].asDouble().unwrapOr(0.0);
+                l.x = (rawx > 0 && rawx <= 1) ? float(rawx * width) : float(rawx);
+                l.y = (rawy > 0 && rawy <= 1) ? float(rawy * height) : float(rawy);
+                l.levelID = lv["levelID"].asInt().unwrapOr(0);
+                l.order = lv["order"].asInt().unwrapOr(0);
+                l.authorName = lv["authorName"].asString().unwrapOr("");
+                l.accountID = lv["accountID"].asInt().unwrapOr(0);
+                l.userID = lv["userID"].asInt().unwrapOr(0);
+                w.levels.push_back(l);
+            }
+        }
+
+        worlds.push_back(w);
+        c_customBG.push_back(bg);
+        g_customBGM.push_back(music);
+    }
+
+    if (worlds.empty()) {
+        c_custom = false;
+        return getWorlds(width, height);
+    }
+
+    c_custom = true;
+    return worlds;
+}
+
 class WorldLvl : public LevelDownloadDelegate {
 public:
     WorldLevel wlvl;
@@ -23,15 +95,12 @@ public:
         CCDirector::get()->pushScene(CCTransitionFade::create(0.5f, scene));
     }
     void levelDownloadFailed(int id) override {
-        FLAlertLayer::create(
-            "Download Failed",
-            "Failed to download the level. Please try again later.", 
-            "OK"
-        )->show();
+        FLAlertLayer::create("Download Failed",
+            "Failed to download the level. Please try again later.",
+            "OK")->show();
         GameLevelManager::get()->m_levelDownloadDelegate = nullptr;
     }
 };
-
 static inline WorldLvl s_delegate;
 
 class WorldsLayer : public cocos2d::CCLayer {
@@ -108,41 +177,81 @@ public:
                 auto btn = static_cast<CCNode*>(children->objectAtIndex(i));
                 std::string id = btn->getID();
                 if (id.rfind("lvl-", 0) == 0) {
-                    menu->removeChild(btn, true);
+                   menu->removeChild(btn, true);
                 }
             }
         }
 
-        auto worlds = getWorlds(win.width, win.height);
+        auto worlds = customTM(win.width, win.height);
+        if (worlds.empty()) return;
+
         if (theWorldWeAreIn >= worlds.size()) theWorldWeAreIn = worlds.size() - 1;
         const auto& world = worlds[theWorldWeAreIn];
 
-        std::string bgname = std::string("World"_spr) + std::to_string(theWorldWeAreIn + 1) + ".png";
-        // ^^^ this will crash the game once you reach secret world 80,000,000 :trollface: (/j)
+        std::string naruto;
+        if (c_custom && theWorldWeAreIn < c_customBG.size() && !c_customBG[theWorldWeAreIn].empty()) {
+            naruto = (geode::Mod::get()->getConfigDir(true) / "custom" / "backgrounds" / c_customBG[theWorldWeAreIn]).string();
+        }
 
-        auto newBg = CCSprite::create(bgname.c_str());
-        newBg->setID("world-bg");
-        newBg->setAnchorPoint({0.5f, 0.5f});
-        newBg->setPosition({ win.width / 2, win.height / 2 });
-        float scaleX = win.width / newBg->getContentSize().width;
-        float scaleY = win.height / newBg->getContentSize().height;
-        newBg->setScaleX(scaleX);
-        newBg->setScaleY(scaleY);
-        this->addChild(newBg, -1);
+        CCSprite* newBg = nullptr;
 
-        if (auto old = static_cast<CCSprite*>(this->getChildByID("world-bg"))) {
-            if (old != newBg) old->removeFromParentAndCleanup(true);
+        if (!naruto.empty()) {
+            newBg = CCSprite::create(naruto.c_str());
+        }
+
+        if (!newBg) {
+            std::string awesome = "World"_spr + std::to_string(theWorldWeAreIn + 1) + ".png";
+            newBg = CCSprite::create(awesome.c_str());
+            // alright so it would very funny if custom maps have more worlds then i have worlds for the main game
+            // and one of their worlds panics and then falls back to using World99.png or whatever even though it
+            // doesnt exist then all you see is darkness :trollface:
+
+            // thank you for reading my useless yapping, have a nice day -jarvisdevil
+        }
+
+        if (newBg) {
+            newBg->setID("world-bg");
+            newBg->setAnchorPoint({0.5f, 0.5f});
+            newBg->setPosition({ win.width / 2, win.height / 2 });
+
+            float scaleX = 1.0f;
+            float scaleY = 1.0f;
+            if (newBg->getContentSize().width > 0 && newBg->getContentSize().height > 0) {
+                scaleX = win.width / newBg->getContentSize().width;
+                scaleY = win.height / newBg->getContentSize().height;
+            }
+            newBg->setScaleX(scaleX);
+            newBg->setScaleY(scaleY);
+
+            if (auto old = static_cast<CCSprite*>(this->getChildByID("world-bg"))) {
+                if (old != newBg) old->removeFromParentAndCleanup(true);
+            }
+            this->addChild(newBg, -1);
         }
 
         static_cast<CCLabelBMFont*>(this->getChildByID("world-name"))->setString(world.title.c_str());
         static_cast<CCLabelBMFont*>(this->getChildByID("funny-text"))->setString(world.desc.c_str());
 
-        if (bgmAudio != world.audio) {
-            bgmAudio = world.audio;
-            FMODAudioEngine::sharedEngine()->playMusic(world.audio, true, 1.0f, 0);
+        std::string epicSounds;
+        if (c_custom && theWorldWeAreIn < g_customBGM.size() && !g_customBGM[theWorldWeAreIn].empty()) {
+            epicSounds = (geode::Mod::get()->getConfigDir(true) / "custom" / "music" / g_customBGM[theWorldWeAreIn]).string();
+            // fun fact: i used getConfigDir(true) three times here.
+        } else {
+            epicSounds = world.audio;
         }
 
-        auto lvls = getWorldLevels(win.width, win.height, theWorldWeAreIn + 1);
+        if (bgmAudio != epicSounds) {
+            bgmAudio = epicSounds;
+            FMODAudioEngine::sharedEngine()->playMusic(epicSounds.c_str(), true, 1.0f, 0);
+        }
+
+        std::vector<WorldLevel> lvls;
+        if (c_custom) {
+            lvls = world.levels;
+        } else {
+            lvls = getWorldLevels(win.width, win.height, static_cast<int>(theWorldWeAreIn + 1));
+        }
+
         cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
         std::set<int> completed;
         for (unsigned i = 0; i < arr->count(); ++i) {
@@ -151,21 +260,28 @@ public:
             }
         }
 
+        bool unlockAll = geode::Mod::get()->getSettingValue<bool>("unlock-all");
+        // ^^^ killing "why is the map so hard" comments since 2025!
         bool uhh = false;
         for (size_t i = 0; i < lvls.size(); ++i) {
             const auto& e = lvls[i];
-            bool unlocked = (e.order == 1) ||
-                (completed.count(lvls[e.order - 2].levelID) > 0);
+            bool unlocked = unlockAll ||
+                (e.order == 1) ||
+                (lvls.size() >= static_cast<size_t>(e.order) && completed.count(lvls[e.order - 2].levelID) > 0);
+
             if (!unlocked) { uhh = true; }
-            if (uhh) { continue; }
+            if (uhh && !unlockAll) { continue; }
+
             const char* frame = unlocked
                 ? "worldLevelBtn_001.png"_spr
                 : "worldLevelBtn_locked_001.png"_spr;
+
             auto spr = CCSprite::createWithSpriteFrameName((std::string(frame)).c_str());
             if (i == lvls.size() - 1) { spr->setScale(2.0f); }
             if (completed.count(e.levelID) > 0) {
                 spr->setColor(ccc3(0, 255, 0));
             }
+
             auto btn = CCMenuItemSpriteExtra::create(spr, nullptr, this, menu_selector(WorldsLayer::onWorld));
             btn->setID("lvl-" + std::to_string(e.levelID));
             btn->setTag(e.levelID);
@@ -178,7 +294,6 @@ public:
         nextBtn->setVisible(theWorldWeAreIn + 1 < worlds.size());
     }
 
-
     void onMINUSWORLD(CCObject*) {
         if (theWorldWeAreIn == 0) return;
         theWorldWeAreIn--;
@@ -189,6 +304,13 @@ public:
         auto win = CCDirector::get()->getWinSize();
         auto worlds = getWorlds(win.width, win.height);
         if (theWorldWeAreIn + 1 >= worlds.size()) return;
+
+        if (geode::Mod::get()->getSettingValue<bool>("unlock-all")) {
+            theWorldWeAreIn++;
+            this->refreshLvls(0);
+            return;
+        }
+
         if (!ifSpaceUKd(worlds[theWorldWeAreIn].levels)) {
             FLAlertLayer::create("Woah there!", "<cy>Please beat all the levels</c> <cj>before moving on to the next world!</c>", "OK")->show();
             return;
@@ -198,6 +320,7 @@ public:
     }
 
     bool ifSpaceUKd(const std::vector<WorldLevel>& levels) {
+        if (geode::Mod::get()->getSettingValue<bool>("unlock-all")) return true;
         cocos2d::CCArray* arr = GameLevelManager::get()->getCompletedLevels(false);
         std::set<int> completed;
         for (unsigned i = 0; i < arr->count(); ++i)
